@@ -1,0 +1,75 @@
+---
+title: "optim"
+format: html
+editor: visual
+---
+
+## Quarto
+
+Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>.
+
+## Running Code
+
+When you click the **Render** button a document will be generated that includes both content and the output of embedded code. You can embed code like this:
+
+```{r}
+library(dplyr, warn.conflicts = FALSE)
+```
+
+```{r}
+set.seed(2017-08-10)
+mu <- c(1, 2)
+S <- rbind(c(1, .9), c(.9, 1))
+x <- MASS::mvrnorm(500, mu, S)
+nloglike <- function(mu1, mu2) {
+        dmv <- mvtnorm::dmvnorm(x, c(mu1, mu2), S, log = TRUE)
+        -sum(dmv)
+}
+nloglike <- Vectorize(nloglike, c("mu1", "mu2"))
+nx <- 40
+ny <- 40
+xg <- seq(-5, 5, len = nx)
+yg <- seq(-5, 6, len = ny)
+g <- expand.grid(xg, yg)
+nLL <- nloglike(g[, 1], g[, 2])
+z <- matrix(nLL, nx, ny)
+par(mar = c(4.5, 4.5, 1, 1))
+contour(xg, yg, z, nlevels = 40, xlab = expression(mu[1]), 
+        ylab = expression(mu[2]))
+abline(h = 0, v = 0, lty = 2)
+```
+
+```{r}
+norm <- function(x) x / sqrt(sum(x^2))
+Sinv <- solve(S)  ## I know I said not to do this!
+step1 <- function(mu, alpha = 1) {
+        D <- sweep(x, 2, mu, "-")
+        score <- colSums(D) %>% norm
+        mu + alpha * drop(Sinv %*% score)
+}
+steep <- function(mu, n = 10, ...) {
+        results <- vector("list", length = n)
+        for(i in seq_len(n)) {
+                results[[i]] <- step1(mu, ...)
+                mu <- results[[i]]
+        }
+        results
+}
+m <- do.call("rbind", steep(c(-5, -2), 8))
+m <- rbind(c(-5, -2), m)
+
+par(mar = c(4.5, 4.5, 1, 1))
+contour(xg, yg, z, nlevels = 40, xlab = expression(mu[1]), 
+        ylab = expression(mu[2]))
+abline(h = 0, v = 0, lty = 2)
+points(m, pch = 20, type = "b")
+```
+
+You can add options to executable code like this
+
+```{r}
+#| echo: false
+2 * 2
+```
+
+The `echo: false` option disables the printing of code (only output is displayed).
